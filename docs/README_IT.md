@@ -1,117 +1,99 @@
 # Qwen3-TTS Rust
 
-[简体中文](../README.md) | [English](README_EN.md) | [日本語](README_JA.md) | [Korean](README_KO.md) | [Français](README_FR.md) | [Español](README_ES.md) | [Italiano](README_IT.md) | [Deutsch](README_DE.md) | [Русский](README_RU.md) | [Português](README_PT.md)
+[中文](../README.md) | [English](README_EN.md) | [日本語](README_JA.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Español](README_ES.md) | [Italiano](README_IT.md) | [Deutsch](README_DE.md) | [Русский](README_RU.md) | [Português](README_PT.md)
 
-This project is the ultimate performance implementation of Qwen3-TTS. The core breakthroughs are the deep integration of **"Instruction-Driven"** synthesis and **"Zero-shot Custom Speakers (Cloning)"**. Leveraging Rust's memory safety and the efficient inference of llama.cpp/ONNX, it provides an industrial-grade text-to-speech solution.
+## Configurazione attuale
 
-## 🚀 Core Features
+Servizio Qwen3-TTS Rust per Windows: **Qwen3-TTS-12Hz-1.7B-Base, Q5_K_M, un motore**. Talker/Predictor usano llama.cpp Vulkan; il vocoder usa ONNX Runtime su CPU. Verificato su **AMD Radeon 8060S**. Sono riportati solo test del progetto; CUDA, Metal e altri sistemi non hanno misure verificate qui. Aggiornato: 2026-10-08.
 
-### 1. Extreme Performance & Streaming
-- **Concurrent Streaming Decoding**: Uses a 4-frame (64 codes) granularity for concurrent decoding, determining first-token latency as low as 300ms for a "speech-while-thinking" experience.
-- **Hardware Acceleration**: **Vulkan** (Windows/Linux) and **Metal** (macOS) acceleration are enabled by default, significantly boosting inference speed.
-- **Automatic Runtime Management**: Zero-config environment; automatically downloads and configures `llama.cpp` (b7885) and `onnxruntime`, ready to use out of the box.
+## Funzioni implementate
 
-### 2. Flexible Speaker Management
-- **Auto-Scan & Cache**: Automatically loads voice files from the `speakers/` directory on startup.
-- **Versatile Selection**: Supports flexible speaker selection via CLI arguments `--speaker <name>` or `--voice-file <path>`.
-- **Smart Fallback**: Automatically falls back to the default voice (vivian) if the specified speaker is not found, ensuring system stability.
+- WebUI: audio completo, streaming WebSocket, arresto e tempo al primo suono con dettaglio.
+- WAV e trascrizione esatta, estrazione ICL completa, caricamento dopo riavvio.
+- Post-elaborazione separata di velocità/volume (0–100), saltata al valore 50.
+- `<phoneme py="lù">六</phoneme>` diventa pinyin e spazio prima dell’inferenza; non è SSML nativo.
+- Avvio Windows nell’area di notifica, IP/porta e CPU/Vulkan configurabili, script di packaging.
+- Voci: 39 (predefinita), xiaolu, xiaoyan. File esclusi da Git; Base non usa ID CustomVoice Serena/Vivian.
 
-### 3. Precise Instruction Control
-- **Instruction-Driven**: Supports embedding emotion tags like `[Happy]`, `[Sad]` in the text to adjust the delivery style in real-time.
-- **EOS Alignment**: Perfectly aligned with Qwen3's stop logic, supporting multiple EOS token detections to prevent generation of trailing silence or artifacts.
+## Misure del primo pacchetto
 
-## 📊 Benchmarks
+**Windows / Radeon 8060S / Base 1.7B Q5 / Vulkan + vocoder CPU**. Notizie cinesi, istruzione vuota; Temperature 0.7, Top-K 50, Top-P 1, seed 43, velocità/volume 50. Quattro richieste complete dopo una sintesi iniziale. Dall’invio su WebSocket già connesso al primo PCM destinato alla riproduzione, non al primo suono nel browser o alla fine della sintesi.
 
-| Backend | Model (GGUF) | RTF (Real-Time Factor) | Avg Time (ms) | Avg Audio (s) | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **CUDA** | Q5_K_M | **0.553** | 1162.6 | 2.19 | OK |
-| **Vulkan** | Q5_K_M | 0.598 | 1285.4 | 2.19 | OK |
-| **CUDA** | Q8_0 | 0.640 | 1523.4 | 2.44 | OK |
-| **Vulkan** | Q8_0 | 0.638 | 1502.0 | 2.44 | OK |
-| **CPU** | Q5_K_M | 1.677 | 2823.4 | 1.96 | OK |
-| **CPU** | Q8_0 | 1.866 | 4160.1 | 2.51 | OK |
-
-- **Test Environment**: Intel Core i9-13980HX, NVIDIA RTX 2080 Ti. VRAM Usage ~0.7-1.5GB.
-- **Data Source**: Average of 10 generations on Windows.
-- **Best Performance**: RTF 0.553 (CUDA + Q5KM), meaning 1 second of audio takes only 0.553 seconds to generate.
-
-## 🛠️ Quick Start
-
-### 1. Basic Generation
-Generate speech using the default speaker:
-```powershell
-cargo run --bin qwen3_tts -- --text "Hello, welcome to use Qwen3-TTS Rust!"
-```
-
-### 2. Specify Speaker
-Use a preset or custom speaker:
-```powershell
-# Use name (requires corresponding .json file in speakers/ directory)
-cargo run --bin qwen3_tts -- --text "The weather is nice today." --speaker dylan
-
-# Use specific file path
-cargo run --bin qwen3_tts -- --text "I am a custom voice." --voice-file "path/to/my_voice.json"
-```
-
-### 3. Clone New Voice
-Clone a voice with just 3-10 seconds of reference audio:
-```powershell
-cargo run --bin qwen3_tts -- `
-    --ref-audio "ref.wav" `
-    --ref-text "The text content corresponding to the reference audio" `
-    --save-voice "speakers/my_voice.json" `
-    --text "New voice saved, you can use it directly now!"
-```
-
-### 4. Style/Emotion Control (Instruction)
-Change the speaking style in real-time via the `--instruction` argument:
-```powershell
-# Sad tone
-cargo run --bin qwen3_tts -- --text "I'm sorry, I didn't mean to..." --instruction "Sad and sobbing, very upset"
-
-# Happy tone
-cargo run --bin qwen3_tts -- --text "Awesome! We did it!" --instruction "Happy and excited, slightly faster"
-```
-
-### 5. Advanced Configuration
-```powershell
-cargo run --bin qwen3_tts -- `
-    --text "Long text generation test." `
-    --max-steps 1024 `    # Adjust max generation length
-    --output "output.wav" # Specify output filename
-```
-
-### 6. Sampling Parameters
-Control randomness and diversity of generation through sampling parameters:
-```powershell
-# Adjust temperature (higher = more random, 0.0 = greedy)
-cargo run --bin qwen3_tts -- --text "Test text" --temperature 0.8
-
-# Use fixed seed for reproducibility
-cargo run --bin qwen3_tts -- --text "Test text" --seed 12345
-
-# Full parameter example
-cargo run --bin qwen3_tts -- `
-    --text "Testing sampling parameters." `
-    --temperature 0.7 `   # Temperature (default 0.7)
-    --top-k 40 `          # Top-K sampling (default 40)
-    --top-p 0.9 `         # Top-P nucleus sampling (default 0.9)
-    --seed 42             # Random seed (optional)
-```
-
-## 📂 Directory Structure
-
-The system automatically builds the following structure on first run:
+| Avvio / voce | Media | Intervallo |
+| --- | ---: | ---: |
+| Avvio locale normale / 39 | 322.47 ms | 313.31–333.28 ms |
+| Avvio portatile dall’area di notifica / 39 | 312.46 ms | 310.76–314.31 ms |
 
 ```text
-.
-├── models/             # Model files (GGUF, ONNX, Tokenizer)
-├── runtime/            # Auto-downloaded dependencies (dll, so, dylib)
-└── speakers/           # User custom voices
+他也提到，去年河北十个市，县，获评第七届全国文明城市，数量是前六届的总和，全国双拥模范城，实现设区市全覆盖。人民群众的安全得到切实维护。
 ```
 
-## 📜 License & Acknowledgements
+Altro test dello stesso giorno: 39 337.61 ms, xiaolu 319.95 ms, xiaoyan 328.89 ms (tre prove ciascuno, testo precedente). Non ricavare guadagni sottraendo test diversi. Tutte le 20 uscite PCM complete del confronto portatile sono identiche byte per byte; la prova riguarda versioni e input verificati.
 
-- Based on **MIT / Apache 2.0** license.
-- Thanks to [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) official repository for models and technical foundation.
-- Thanks to [Qwen3-TTS-GGUF](https://github.com/HaujetZhao/Qwen3-TTS-GGUF) for inspiration on the GGUF inference flow.
+Testo, voce, code e carico influenzano la latenza. Un utente ha misurato 411 ms al pacchetto e 431 ms al suono; l’API non ha riprodotto il risultato, causa non identificata. Prima richiesta locale dopo riavvio: circa 2.47 s, esclusa; nessuna sintesi automatica di riscaldamento. **Non è dimostrato un limite ≤300 ms per ogni richiesta.** Ottimizzazioni: proiezioni fisse, intervallo di campionamento, invio anticipato di quattro frame, soli stati per audio di riferimento scartato e riduzione dell’onda alla seconda chiamata. Le nuove voci richiedono calibrazione all’avvio. Vedere sezione 34 e confronto packaging.
+
+## Avvio e configurazione
+
+Estrarre il pacchetto completo e avviare `启动TTS.exe`. Il menu apre pagina, configurazione e log oppure arresta il servizio. All’utente non servono Rust/Python/Visual Studio; Vulkan richiede un driver grafico. Sviluppo e packaging richiedono strumenti di compilazione. Riavviare dopo modifiche:
+
+`server-config.json`
+
+```json
+{
+  "inference_device": "vulkan",
+  "host": "0.0.0.0",
+  "port": 3000,
+  "speakers": ["39", "xiaolu", "xiaoyan"],
+  "open_browser": true
+}
+```
+
+[http://127.0.0.1:3000/](http://127.0.0.1:3000/)
+
+**Il repository sorgente non è un pacchetto portatile completo.** Modelli, runtime, EXE e JSON delle voci sono esclusi. Alcuni modelli convertiti, ONNX ottimizzati e backend non hanno ancora download pubblici. Preparare file corrispondenti e directory di rilascio compilata e verificata prima dell’avvio:
+
+```powershell
+pwsh -NoProfile -File .\start-webui.ps1
+```
+
+## Voci personalizzate
+
+WAV chiaro, singolo parlante, senza musica, con trascrizione esatta. Upload web: 1–30 s; conversione a 24 kHz con originale conservato. Full salva codici, testo e vettore; Xvec solo il vettore e non equivale a ICL completo. Riavviare dopo upload; JSON manuali aggiungibili con `-BaseSpeakers`.
+
+```powershell
+.\create-speaker.ps1 -AudioPath .\reference.wav -Name my-voice -Mode Full -RefTextFile .\reference.txt
+.\create-speaker.ps1 -AudioPath .\reference.wav -Name my-voice-xvec -Mode Xvec
+pwsh -NoProfile -File .\start-webui.ps1 -BaseSpeakers my-voice
+```
+
+## API
+
+HTTP e WebSocket condividono la porta (3000). `POST /api/tts`: JSON con WAV Base64; `GET /api/speakers`: voci; `GET /health`: stato. Inviare questo JSON a `ws://127.0.0.1:3000/api/tts/stream`. Specificare i parametri per replicare il WebUI; Temperature omessa vale 0 sul server.
+
+```json
+{
+  "text": "你好，今天天气很好。",
+  "speaker": "39",
+  "temperature": 0.7,
+  "top_k": 50,
+  "top_p": 1,
+  "seed": 43,
+  "instruction": "",
+  "speed": 50,
+  "volume": 50
+}
+```
+
+Binario: PCM mono 24 kHz Float32 little-endian. `segment_done` termina un segmento; il testo `end` chiude l’input, seguito da `done`. Chiudere WebSocket per annullare; `end` non annulla e non esiste endpoint HTTP separato di arresto. Completare la riproduzione dopo `done`. Temperature 0 seleziona il massimo in Talker e disattiva i suoi Top-K/Top-P. Predictor mantiene configurazione separata (0.9 / 50 / 1).
+
+## Documentazione e origini
+
+Documentazione dettagliata attualmente in cinese. Basato sull’implementazione Rust originale, usa Qwen3-TTS, llama.cpp e ONNX Runtime. Conservare licenze e attribuzioni dei componenti.
+
+- [Base 1.7B — models / 模型](../models/base-1.7b/README.md)
+- [Configuration / 配置](../server-config说明.md)
+- [Portable package / 绿色版](../绿色版打包说明.md)
+- [Optimization measurements / 优化方法](../优化方法.md)
+- [Preserved baseline / 基线](../基线版本.md)
+- [Upstream Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) · [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+- [Component licenses / 组件许可证](../tools/portable-licenses/)

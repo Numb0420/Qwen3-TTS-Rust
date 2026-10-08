@@ -1,209 +1,99 @@
 # Qwen3-TTS Rust
 
-[中文](README.md) | [English](docs/README_EN.md) | [日本語](docs/README_JA.md) | [Korean](docs/README_KO.md) | [Français](docs/README_FR.md) | [Español](docs/README_ES.md) | [Italiano](docs/README_IT.md) | [Deutsch](docs/README_DE.md) | [Русский](docs/README_RU.md) | [Português](docs/README_PT.md)
+[中文](README.md) | [English](docs/README_EN.md) | [日本語](docs/README_JA.md) | [한국어](docs/README_KO.md) | [Français](docs/README_FR.md) | [Español](docs/README_ES.md) | [Italiano](docs/README_IT.md) | [Deutsch](docs/README_DE.md) | [Русский](docs/README_RU.md) | [Português](docs/README_PT.md)
 
-## 当前部署（2026-10-08）
+## 当前版本
 
-当前使用已试听验收的 **1.7B Base Q5 单引擎**，模型目录为 `models/base-1.7b`，网页和 API 默认说话人为 `39`，初始开放克隆说话人 `39`、`xiaolu`、`xiaoyan`。用 `pwsh -NoProfile -File .\start-webui.ps1` 启动。旧 CustomVoice 运行模型已清理，当前优化和验证结果见 [优化方法.md](优化方法.md)；下方通用项目说明中的预设音色和旧模型自动下载流程不适用于这一部署。
+本仓库维护 Windows 上的 Qwen3-TTS Rust 服务，当前部署为 **Qwen3-TTS-12Hz-1.7B-Base、Q5_K_M、单引擎**。Talker 和 Predictor 使用 llama.cpp Vulkan，声码器使用 CPU ONNX Runtime。本机验证硬件为 **AMD Radeon 8060S**；本文只列本项目实测结果，不提供 CUDA、Metal 或其他机器的性能结论。更新日期：2026-10-08。
 
-模型文件不随源码上传。目录、文件列表、已核对下载地址及本地转换文件的获取说明见 [1.7B Base 模型准备](models/base-1.7b/README.md)。绿色版重新打包见 [绿色版打包说明](绿色版打包说明.md)。当前默认克隆列表为 `39`、`xiaolu`、`xiaoyan`，上传的说话人重启后自动加载。
+## 已实现功能
 
+- WebUI：完整音频生成、WebSocket 流式播放、停止、首音时间及分阶段时间显示。
+- WAV 上传与对应文本输入，提取完整 ICL 克隆说话人；上传后需重启服务加载。
+- 独立音频后处理：语速、音量范围 0–100，默认 50 时跳过处理。
+- 指定读音：`<phoneme py="lù">六</phoneme>` 在进入引擎前替换为拼音加空格，并非模型原生 SSML。
+- Windows 绿色版托盘启动器，配置监听 IP、端口及 CPU/Vulkan 模式；提供重新打包脚本。
+- 默认使用说话人 39，部署列表包含 xiaolu、xiaoyan；音色文件不随源码提交。Base 服务不使用 Serena/Vivian 等 CustomVoice 预设 ID。
 
-`create-speaker.ps1` 和提取工具默认使用 Base 目录中的 ONNX 编码器，Full/Xvec 两种格式均保留。网页上传的新音色会自动登记，重启服务后加载；手动放入的 JSON 可通过 `-BaseSpeakers` 加入开放名单。Base 不能直接使用 Serena/Vivian 等 CustomVoice 预设 ID，原说话人 JSON/WAV 保留待后续验证。
+## 本项目首包时间
 
-本项目是 Qwen3-TTS 的极致性能实现，核心突破在于 **“指令驱动 (Instruction-Driven)”** 与 **“零样本自定义音色 (Custom Speakers)”** 的深度集成。通过 Rust 的内存安全特性与 llama.cpp/ONNX 的高效推理，为您提供工业级的文本转语音解决方案。
+以下为 **Windows / Radeon 8060S / 1.7B Base Q5 / Vulkan + CPU 声码器** 的热运行结果。新闻文本、空指令；Temperature 0.7、Top-K 50、Top-P 1、种子 43、语速/音量 50。一次完整合成后，每种方式连续测 4 次。计时从已连接 WebSocket 发送请求至收到第一包目标 PCM，不是浏览器首音，也不是整段合成耗时。
 
-## 🚀 核心特性
-
-### 1. 极致性能与流式响应
-- **并发流式解码**：采用 4 帧 (64 codes) 粒度的并发解码策略，首字延迟低至 300ms，实现“边想边说”的流畅体验。
-- **硬件加速**：默认启用 **Vulkan** (Windows/Linux) 和 **Metal** (macOS) 加速，显著提升推理速度。
-- **自动运行时管理**：零配置环境，自动下载并配置 `llama.cpp` (b7885) 和 `onnxruntime`，开箱即用。
-
-### 2. 灵活的说话人管理
-- **自动扫描与缓存**：启动时自动加载 `speakers/` 目录下的音色文件。
-- **多种选择方式**：支持通过 CLI 参数 `--speaker <name>` 或 `--voice-file <path>` 灵活选择说话人。
-- **智能回退**：若指定说话人不存在，自动回退至默认音色 (vivian)，确保系统稳定性。
-
-### 3. 精准的指令控制
-- **指令驱动**：支持在文本中嵌入 `[高兴]`、`[悲伤]` 等情感指令，实时调整演绎风格。
-- **EOS 对齐**：完美对齐 Qwen3 的停止逻辑，支持多种 EOS token 检测，杜绝生成末尾的静音或乱码。
-
-## 📊 性能基准 (Benchmarks)
-
-| Backend | Model (GGUF) | RTF (Real-Time Factor) | Avg Time (ms) | Avg Audio (s) | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **CUDA** | Q5_K_M | **0.553** | 1162.6 | 2.19 | OK |
-| **Vulkan** | Q5_K_M | 0.598 | 1285.4 | 2.19 | OK |
-| **CUDA** | Q8_0 | 0.640 | 1523.4 | 2.44 | OK |
-| **Vulkan** | Q8_0 | 0.638 | 1502.0 | 2.44 | OK |
-| **CPU** | Q5_K_M | 1.677 | 2823.4 | 1.96 | OK |
-| **CPU** | Q8_0 | 1.866 | 4160.1 | 2.51 | OK |
-
-- **测试环境**: Intel Core i9-13980HX, NVIDIA RTX 2080 Ti. 显存占用约 0.7-1.5GB.
-- **数据来源**: Windows 平台 10 轮生成平均值。
-- **最佳性能**: RTF 0.553 (CUDA + Q5KM)，即生成 1 秒音频仅需 0.553 秒。
-
-## 🛠️ 快速上手
-
-### 1. 基础生成
-使用默认说话人生成语音：
-```powershell
-cargo run --bin qwen3_tts -- --text "你好，欢迎使用 Qwen3-TTS Rust！"
-```
-
-### 2. 指定说话人
-使用预设或自定义说话人：
-```powershell
-# 使用名称 (需在 speakers/ 目录下存在对应的 .json 文件)
-cargo run --bin qwen3_tts -- --text "今天天气不错。" --speaker dylan
-
-# 使用指定文件路径
-cargo run --bin qwen3_tts -- --text "我是自定义音色。" --voice-file "path/to/my_voice.json"
-```
-
-### 3. 克隆新音色
-只需 3-10 秒的参考音频即可克隆音色：
-```powershell
-cargo run --bin qwen3_tts -- `
-    --ref-audio "ref.wav" `
-    --ref-text "参考音频对应的文本内容" `
-    --save-voice "speakers/my_voice.json" `
-    --text "新音色已保存，现在可以直接使用了！"
-```
-
-在 Windows 上也可以用 `create-speaker.ps1` 直接从 WAV 提取并保存音色。脚本会自动转换为模型需要的 24 kHz，不会修改原始 WAV：
-
-```powershell
-# 完整克隆：同时提取参考音频编码和说话人向量；参考文本必须与录音一致
-.\create-speaker.ps1 -AudioPath .\speakers\40.wav -Name 40-full -Mode Full `
-    -RefText '请查询近3天的会议记录，找出所有提到产品交付、客户投诉、系统故障和项目延期的内容，并按照风险程度整理成一份问题清单。'
-
-# 仅说话人向量：不需要参考文本
-.\create-speaker.ps1 -AudioPath .\speakers\40.wav -Name 40-xvec -Mode Xvec
-```
-
-完整克隆也支持 `-RefTextFile .\reference.txt`（UTF-8）。默认输出为 `speakers/<名称>.json`；已存在时需显式加 `-Force` 才会覆盖。运行中的网页服务需要重启，才能把新音色加入说话人列表。
-
-### 4. 风格/情感控制 (Instruction)
-通过 `--instruction` 参数实时改变说话语气：
-```powershell
-# 悲伤语气
-cargo run --bin qwen3_tts -- --text "对不起，我不是故意的..." --instruction "悲伤啜泣，非常难过"
-
-# 开心语气
-cargo run --bin qwen3_tts -- --text "太棒了！我们成功了！" --instruction "开心激动，语速稍快"
-```
-
-### 5. 高级配置
-```powershell
-cargo run --bin qwen3_tts -- `
-    --text "长文本生成测试。" `
-    --max-steps 1024 `    # 调整最大生成长度
-    --output "output.wav" # 指定输出文件名
-```
-
-### 6. 采样参数调整
-通过采样参数控制生成的随机性和多样性：
-```powershell
-# 调整温度 (更高 = 更随机，0.0 = 贪婪)
-cargo run --bin qwen3_tts -- --text "测试文本" --temperature 0.8
-
-# 使用固定种子复现结果
-cargo run --bin qwen3_tts -- --text "测试文本" --seed 12345
-
-# 完整参数示例
-cargo run --bin qwen3_tts -- `
-    --text "测试采样参数。" `
-    --temperature 0.7 `   # 温度 (默认 0.7)
-    --top-k 40 `          # Top-K 采样 (默认 40)
-    --top-p 0.9 `         # Top-P 核采样 (默认 0.9)
-    --seed 42             # 随机种子 (可选)
-```
-
-## 📦 作为 Rust 库使用
-
-在 `Cargo.toml` 中添加依赖：
-
-```toml
-[dependencies]
-# 本地引用
-qwen3-tts = { path = "." }
-
-# 或从 Git 引用
-# qwen3-tts = { git = "https://github.com/cgisky1980/Qwen3-TTS-Rust" }
-```
-
-### 基础用法
-
-```rust
-use qwen3_tts::{TtsEngine, VoiceFile, SamplerConfig};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. 初始化引擎
-    let mut engine = TtsEngine::new("models", "none").await?;
-    
-    // 2. 配置采样参数 (可选)
-    let sampler_config = SamplerConfig::new(0.7, 40, 0.9, None);
-    engine.set_sampler_config(sampler_config);
-    
-    // 3. 加载音色
-    let voice = VoiceFile::load("speakers/sohee.json")?;
-    
-    // 4. 生成语音
-    let audio = engine.generate_with_voice(
-        "你好，欢迎使用 Qwen3-TTS！",
-        &voice,
-        None,  // instruction
-    )?;
-    
-    // 5. 保存音频
-    audio.save_wav("output.wav")?;
-    
-    Ok(())
-}
-```
-
-### 从参考音频创建音色
-
-```rust
-use qwen3_tts::TtsEngine;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut engine = TtsEngine::new("models", "none").await?;
-    
-    // 从参考音频提取音色
-    let voice = engine.create_voice_file(
-        "reference.wav",
-        "参考音频对应的文本".to_string(),
-    )?;
-    
-    // 保存音色文件
-    voice.save("speakers/my_voice.json")?;
-    
-    // 使用新音色生成
-    let audio = engine.generate_with_voice("测试新音色", &voice, None)?;
-    audio.save_wav("output.wav")?;
-    
-    Ok(())
-}
-```
-
-## �� 目录结构
-
-系统首次运行会自动构建如下结构：
+| 启动方式 / 说话人 | 平均首包 | 范围 |
+| --- | ---: | ---: |
+| 本地常规启动 / 39 | 322.47 ms | 313.31–333.28 ms |
+| 绿色版托盘启动 / 39 | 312.46 ms | 310.76–314.31 ms |
 
 ```text
-.
-├── models/             # 模型文件 (GGUF, ONNX, Tokenizer)
-├── runtime/            # 自动下载的依赖库 (dll, so, dylib)
-└── speakers/           # 用户自定义音色
+他也提到，去年河北十个市，县，获评第七届全国文明城市，数量是前六届的总和，全国双拥模范城，实现设区市全覆盖。人民群众的安全得到切实维护。
 ```
 
-## 📜 许可证与致谢
+同日另一组热运行新闻测试：39 为 337.61 ms、xiaolu 为 319.95 ms、xiaoyan 为 328.89 ms（各 3 次，使用此前新闻文本，不能与上表直接计算优化收益）。打包对照的 20 份完整 PCM 逐字节一致；仅证明该测试覆盖的版本与输入一致。
 
-- 基于 **MIT / Apache 2.0** 许可证。
-- 感谢 [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) 官方仓库提供的模型与技术基座。
-- 感谢 [Qwen3-TTS-GGUF](https://github.com/HaujetZhao/Qwen3-TTS-GGUF) 提供的推理流程启发。
+首包会随文本、说话人、并发排队及机器负载变化。用户网页曾测到请求首包 411 ms、首音 431 ms，本轮接口测试未复现，原因尚未确定。最新本地常规服务重启后的第一次请求约 2.47 秒，未计入热结果；当前没有为缩短首次合成而自动生成预热音频。**尚未证明每次首包 ≤300 ms。** 优化包括固定投影缓存、采样范围、4 帧提前发送、参考尾音仅更新状态及第二次波形裁剪；新音色快路径由启动校准决定，并非按名称开启。详见优化记录第 34 节及打包对照文档。
+
+## 运行与配置
+
+完整绿色版解压后双击 `启动TTS.exe`，托盘菜单可打开网页、配置、日志或退出服务。用户无需安装 Rust/Python/Visual Studio 构建工具；Vulkan 模式需要可用的显卡驱动。源码开发与重新打包需要构建工具。配置修改后重启：
+
+`server-config.json`
+
+```json
+{
+  "inference_device": "vulkan",
+  "host": "0.0.0.0",
+  "port": 3000,
+  "speakers": ["39", "xiaolu", "xiaoyan"],
+  "open_browser": true
+}
+```
+
+[http://127.0.0.1:3000/](http://127.0.0.1:3000/)
+
+**源码仓库不等于可直接运行的绿色版。** `models/` 权重、`runtime/`、发布 EXE 和说话人 JSON 都不在 Git 中；部分本地转换模型、优化 ONNX 和后端还没有公开下载包。必须先准备匹配的文件，当前脚本依赖已经构建并校验的发布目录，不能只克隆仓库就运行。已准备好本机发布文件后启动：
+
+```powershell
+pwsh -NoProfile -File .\start-webui.ps1
+```
+
+## 自定义说话人
+
+使用清晰、单人、无背景音乐的 WAV，提供逐字对应的参考文本。网页上传接受 1–30 秒；提取时转换为 24 kHz，原音频保留。Full 保存参考编码、文本和说话人向量；Xvec 仅保存向量，不是完整 ICL 的等价替代。网页上传会登记新音色，重启后加载；手动生成的 JSON 可通过 `-BaseSpeakers` 加入启动名单。
+
+```powershell
+.\create-speaker.ps1 -AudioPath .\reference.wav -Name my-voice -Mode Full -RefTextFile .\reference.txt
+.\create-speaker.ps1 -AudioPath .\reference.wav -Name my-voice-xvec -Mode Xvec
+pwsh -NoProfile -File .\start-webui.ps1 -BaseSpeakers my-voice
+```
+
+## API
+
+HTTP 与 WebSocket 共用配置端口（默认 3000）。`POST /api/tts` 返回 JSON，包含 Base64 WAV；`GET /api/speakers` 返回说话人列表，`GET /health` 用于健康检查。流式接口 `ws://127.0.0.1:3000/api/tts/stream` 接收下列 JSON；API 调用应显式传入参数以匹配网页设置，省略 Temperature 时服务端使用 0。
+
+```json
+{
+  "text": "你好，今天天气很好。",
+  "speaker": "39",
+  "temperature": 0.7,
+  "top_k": 50,
+  "top_p": 1,
+  "seed": 43,
+  "instruction": "",
+  "speed": 50,
+  "volume": 50
+}
+```
+
+二进制消息为 24 kHz、单声道、Float32 小端 PCM；`segment_done` 表示当前文本完成，发送文本消息 `end` 结束输入，服务端以 `done` 结束。停止通过关闭当前 WebSocket 实现；`end` 不取消合成，没有独立 HTTP 停止接口。客户端收到 `done` 后仍需播放完已收到的音频。Temperature 为 0 时 Talker 使用最高概率选择，Top-K/Top-P 对该路径不起作用；Predictor 保留独立配置（0.9 / 50 / 1）。
+
+## 文档与来源
+
+模型文件、依赖与完整测试过程见以下文档（详细记录目前为中文）。本项目基于上游 Rust 实现，使用 Qwen3-TTS、llama.cpp 与 ONNX Runtime；保留各组件的许可证及归属。
+
+- [Base 1.7B — models / 模型](models/base-1.7b/README.md)
+- [Configuration / 配置](server-config说明.md)
+- [Portable package / 绿色版](绿色版打包说明.md)
+- [Optimization measurements / 优化方法](优化方法.md)
+- [Preserved baseline / 基线](基线版本.md)
+- [Upstream Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) · [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+- [Component licenses / 组件许可证](tools/portable-licenses/)
