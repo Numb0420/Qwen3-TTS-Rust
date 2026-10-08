@@ -95,5 +95,9 @@ HTTP와 WebSocket은 같은 포트(기본 3000)입니다. `POST /api/tts`는 Bas
 - [Portable package / 绿色版](../绿色版打包说明.md)
 - [Optimization measurements / 优化方法](../优化方法.md)
 - [Preserved baseline / 基线](../基线版本.md)
-- [Upstream Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) · [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+- [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+## 라이선스 및 감사
+
+이 프로젝트는 [cgisky1980/Qwen3-TTS-Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust)를 기반으로 개발되었습니다. Rust 구현과 프로젝트 기반을 제공한 원저자에게 감사드립니다.
+
 - [Component licenses / 组件许可证](../tools/portable-licenses/)

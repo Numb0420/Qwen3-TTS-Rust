@@ -95,5 +95,9 @@ Documentos detallados actualmente en chino. Basado en la implementación Rust or
 - [Portable package / 绿色版](../绿色版打包说明.md)
 - [Optimization measurements / 优化方法](../优化方法.md)
 - [Preserved baseline / 基线](../基线版本.md)
-- [Upstream Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) · [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+- [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+## Licencias y agradecimientos
+
+Este proyecto se desarrolla a partir de [cgisky1980/Qwen3-TTS-Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust). Gracias al autor original por la implementación en Rust y la base del proyecto.
+
 - [Component licenses / 组件许可证](../tools/portable-licenses/)

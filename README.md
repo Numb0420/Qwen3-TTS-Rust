@@ -95,5 +95,9 @@ HTTP 与 WebSocket 共用配置端口（默认 3000）。`POST /api/tts` 返回 
 - [Portable package / 绿色版](绿色版打包说明.md)
 - [Optimization measurements / 优化方法](优化方法.md)
 - [Preserved baseline / 基线](基线版本.md)
-- [Upstream Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) · [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+- [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) · [llama.cpp](https://github.com/ggml-org/llama.cpp) · [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+## 许可证与致谢
+
+本项目基于 [cgisky1980/Qwen3-TTS-Rust](https://github.com/cgisky1980/Qwen3-TTS-Rust) 继续开发。感谢原作者提供 Rust 实现与项目基础。
+
 - [Component licenses / 组件许可证](tools/portable-licenses/)
