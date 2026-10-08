@@ -1,0 +1,31 @@
+{
+  "source": "models\\base-1.7b\\onnx\\qwen3_tts_decoder.onnx",
+  "sourceSha256": "b7be17223065fe598bedc88f147aaf8c6ce3b63a1126cd9648d9a1612fae5da1",
+  "output": "diagnostics\\latency-stages\\decoder\\qwen3_tts_decoder_state_only.onnx",
+  "outputSha256": "6a871637a73f8bc6b30d24849530a8ef8daf6a8f48fa619a7553e11fe988cfed",
+  "retainedNodes": 1638,
+  "removedNodes": 1979,
+  "retainedOutputs": [
+    "next_conv_history",
+    "next_key_0",
+    "next_key_1",
+    "next_key_2",
+    "next_key_3",
+    "next_key_4",
+    "next_key_5",
+    "next_key_6",
+    "next_key_7",
+    "next_latent_buffer",
+    "next_pre_conv_history",
+    "next_value_0",
+    "next_value_1",
+    "next_value_2",
+    "next_value_3",
+    "next_value_4",
+    "next_value_5",
+    "next_value_6",
+    "next_value_7"
+  ],
+  "bytes": 162965461,
+  "retainedFieldsAndWeightsVerbatim": true
+}

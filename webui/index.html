@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen3-TTS WebUI</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card h2 {
+            margin-bottom: 16px;
+            color: #00d4ff;
+            font-size: 1.2em;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 16px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 14px;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .btn-streaming {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: #fff;
+        }
+        .btn-streaming:hover {
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        .status.info {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        .status.error {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            color: #ff5252;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+        .audio-player {
+            margin-top: 16px;
+        }
+        audio {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00d4ff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .api-info {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .api-info code {
+            color: #00d4ff;
+        }
+        .notice-example {
+            margin-top: 10px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .streaming-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 107, 107, 0.2);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #ff6b6b;
+        }
+        .streaming-indicator .dot {
+            width: 8px;
+            height: 8px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            animation: pulse 1s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .mode-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+        .mode-btn:hover {
+            border-color: #00d4ff;
+        }
+        .text-tools {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0 0 8px;
+            flex-wrap: wrap;
+        }
+        .text-tools .info-text { margin: 0; }
+        #phonemeDialog {
+            width: min(420px, calc(100% - 32px));
+            margin: auto;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            background: #1b2742;
+            color: #e0e0e0;
+        }
+        #phonemeDialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+        #phonemeDialog h2 { color: #00d4ff; margin-bottom: 16px; }
+        #phonemeDialog input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 16px;
+        }
+        #phonemeDialog .btn-group { justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Qwen3-TTS WebUI</h1>
+
+        <div class="card">
+            <h2>📝 文本输入</h2>
+            <div class="form-group">
+                <label for="text">输入要合成的文本：</label>
+                <div class="text-tools">
+                    <button type="button" class="btn btn-secondary" id="phonemeBtn" onclick="openPronunciationDialog()">指定读音</button>
+                    <span class="info-text">先在下方选中文字，再指定拼音；合成时用拼音加空格替换选中的字。</span>
+                </div>
+                <textarea id="text" placeholder="请输入要转换的文本...">你好，这是一个测试。</textarea>
+            </div>
+            <div class="form-group">
+                <label for="instruction">指令风格 (可选)：</label>
+                <input type="text" id="instruction" placeholder="例如: Happy, Sad, Excited, Calm...">
+                <div class="info-text">添加情感风格指令，留空则无</div>
+            </div>
+        </div>
+        <dialog id="phonemeDialog" aria-labelledby="phonemeTitle">
+            <h2 id="phonemeTitle">指定读音</h2>
+            <div class="form-group">
+                <label for="phonemePinyin">选中文字：<strong id="phonemeSelected"></strong></label>
+                <input id="phonemePinyin" type="text" placeholder="例如：lù 或 lù ān" autocomplete="off">
+                <div class="info-text">输入带声调拼音；也可用 lu4。多个音节之间用空格分开。</div>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('phonemeDialog').close()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="applyPronunciation()">确定</button>
+            </div>
+        </dialog>
+
+        <div class="card">
+            <h2>🎵 生成音频</h2>
+            <div class="mode-switch">
+                <button class="mode-btn active" id="modeNormal" onclick="setMode('normal')">普通模式</button>
+                <button class="mode-btn" id="modeStream" onclick="setMode('stream')">流式播放</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="generateBtn" onclick="generateTTS()">
+                    生成音频
+                </button>
+                <button class="btn btn-streaming hidden" id="streamBtn" onclick="startStreaming()">
+                    🎧 流式播放
+                </button>
+                <button class="btn btn-secondary" id="stopBtn" onclick="stopGeneration()" disabled>
+                    停止
+                </button>
+            </div>
+            <div id="firstAudioTime" class="info-text hidden" style="margin-top: 12px;">首音时间：等待音频...</div>
+            <div id="streamTimingBreakdown" class="info-text hidden">播放器准备：等待；连接：等待；请求首包：等待；首包到首音：等待</div>
+            <div id="streamingStatus" class="hidden" style="margin-top: 16px;">
+                <div class="streaming-indicator">
+                    <span class="dot"></span>
+                    <span>正在流式播放...</span>
+                </div>
+                <div id="sendProgress" style="margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-family: monospace; font-size: 14px; line-height: 1.6;">
+                    <div style="color: #888; margin-bottom: 8px;">发送进度：</div>
+                    <div id="sentText" style="color: #4ecdc4; word-break: break-all;"></div>
+                    <div id="pendingText" style="color: #666; word-break: break-all;"></div>
+                </div>
+            </div>
+            <div id="status" class="status info hidden"></div>
+            <div id="audioContainer" class="audio-player hidden">
+                <audio id="audioPlayer" controls></audio>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚙️ 参数设置</h2>
+            <div class="row">
+                <div class="form-group">
+                    <label for="speaker">说话人</label>
+                    <select id="speaker"></select>
+                </div>
+                <div class="form-group">
+                    <label for="temperature">Temperature</label>
+                    <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
+                    <div class="info-text">越高越随机，0 为贪婪采样；默认 0.7 已在当前说话人 39 的长文本样音中验证。</div>
+                </div>
+                <div class="form-group">
+                    <label for="top_k">Top-K</label>
+                    <input type="number" id="top_k" value="50" min="0" max="100" step="1">
+                    <div class="info-text">每步只从概率最高的 K 个候选中采样；值越小，选择越集中。50 为官方默认值，0 表示不限制。</div>
+                </div>
+                <div class="form-group">
+                    <label for="top_p">Top-P</label>
+                    <input type="number" id="top_p" value="1.0" min="0" max="1" step="0.05">
+                    <div class="info-text">每步只从累计概率达到 P 的候选中采样；值越小，选择越集中。1.0 为官方默认值，表示不额外截断。</div>
+                </div>
+            </div>
+            <div class="info-text">Temperature = 0 时使用最高概率结果，Top-K 和 Top-P 不起作用。</div>
+            <div class="row">
+                <div class="form-group">
+                    <label for="seed">随机种子</label>
+                    <input type="number" id="seed" value="43" placeholder="留空为随机">
+                    <div class="info-text">固定种子有助于复现；不同文本仍可能改变语调和情感。</div>
+                </div>
+                <div class="form-group">
+                    <label for="maxSteps">最大步数</label>
+                    <input type="number" id="maxSteps" value="512" min="64" max="2048" step="64">
+                    <div class="info-text">生成最大 token 数</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group">
+                    <label for="volume">音量 (0–100)</label>
+                    <input type="number" id="volume" value="50" min="0" max="100" step="1">
+                    <div class="info-text">合成后音频后处理：50 为原音量；0 静音，100 约为两倍音量</div>
+                </div>
+                <div class="form-group">
+                    <label for="speed">语速 (0–100)</label>
+                    <input type="number" id="speed" value="50" min="0" max="100" step="1">
+                    <div class="info-text">合成后音频后处理：50 为原语速；0 约 0.5 倍速，100 约 1.5 倍速，尽量保持音高</div>
+                </div>
+            </div>
+            <div class="info-text">两个值均为 50 时，服务端直接跳过音频后处理。</div>
+        </div>
+
+        <div class="card">
+            <h2>自定义说话人上传</h2>
+            <div class="form-group">
+                <label for="uploadSpeakerName">说话人名称</label>
+                <input type="text" id="uploadSpeakerName" maxlength="64" placeholder="例如 xiaoming，不能与已有名称重复" style="width:100%;box-sizing:border-box">
+                <div class="info-text">使用英文字母、数字、连字符或下划线，最多 64 个字符。</div>
+            </div>
+            <div class="form-group">
+                <label for="uploadSpeakerAudio">参考音频（WAV）</label>
+                <input type="file" id="uploadSpeakerAudio" accept=".wav,audio/wav,audio/x-wav">
+                <div class="info-text">建议 3–30 秒清晰单人语音，无背景音乐、杂音或重叠说话；支持 1–30 秒、最大 50 MB。上传音频会在提取时转换为 24 kHz 单声道，保存的 WAV 保留原文件。</div>
+            </div>
+            <div class="form-group">
+                <label for="uploadSpeakerText">音频对应文本</label>
+                <textarea id="uploadSpeakerText" rows="3" maxlength="2000" placeholder="填写参考录音实际说出的完整文字，逐字对应，不要填写希望合成的新文本。"></textarea>
+            </div>
+            <div class="info-text">使用当前 1.7B Base 模型生成完整 ICL 说话人 JSON。生成可能需要一些时间；完成后需要重启服务，并刷新网页，才会出现在说话人列表中。</div>
+            <button type="button" id="uploadSpeakerButton" style="margin-top:16px">上传并生成说话人</button>
+            <p id="uploadSpeakerStatus" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere"></p>
+        </div>
+
+        <div class="card">
+            <h2>📖 API 使用说明</h2>
+            <div class="api-info">
+                <p><strong>HTTP API (非流式):</strong></p>
+                <p>POST <code>/api/tts</code></p>
+                <p>Body: <code>{"text": "你好", "speaker": "39", "temperature": 0.7, "seed": 43, "volume": 50, "speed": 50}</code></p>
+                <br>
+                <p><strong>WebSocket API（流式输出）：</strong></p>
+                <p>连接地址：<code>ws://192.168.110.76:3000/api/tts/stream</code>；本机可用 <code>ws://127.0.0.1:3000/api/tts/stream</code>。端口与网页相同；HTTPS 页面使用 <code>wss://</code> 和对应的 HTTPS 服务地址。</p>
+                <p>连接成功后，发送 JSON 文本消息：</p>
+                <p><code>{"text": "你好。", "speaker": "39", "temperature": 0.7, "top_k": 50, "top_p": 1, "seed": 43, "volume": 50, "speed": 50}</code></p>
+                <p>服务端持续返回二进制音频消息：24 kHz、单声道、32 位浮点 PCM、小端字节序，没有 WAV 文件头。客户端按接收顺序连续播放；音频包边界不代表句子边界。</p>
+                <p>文本消息 <code>segment_done</code> 表示一条文本的音频已发送完；<code>done</code> 表示全部音频已发送完。错误消息为 JSON，例如 <code>{"error":"错误原因"}</code>。客户端收到 <code>done</code> 后，仍需播放完已收到的音频。</p>
+                <br>
+                <p><strong>结束文本输入：</strong></p>
+                <p>同一连接可以依次发送多条 JSON 合成请求。全部文本发送完后，发送纯文本 <code>end</code>（不是 JSON 字符串，也不是 <code>{"type":"end"}</code>）。服务端继续完成已提交文本，最后返回 <code>done</code>；发送 <code>end</code> 后不能再追加文本。</p>
+                <p>单次合成示例：<code>socket.send(JSON.stringify({text:"你好。",speaker:"39",temperature:0.7,seed:43})); socket.send('end');</code></p>
+                <br>
+                <p><strong>停止流式合成与播放：</strong></p>
+                <p>关闭正在合成的 WebSocket：<code>socket.close(1000, 'stop');</code>。服务端收到断开后取消该连接的剩余合成；客户端同时停止播放器并清空尚未播放的音频。例如使用 Web Audio 时，关闭该次播放的 AudioContext：<code>audioContext.close();</code>。再次合成时创建新连接和播放器。</p>
+                <p>停止通过 WebSocket 断开实现，目前没有单独的 HTTP 停止接口，也没有 <code>stop</code> 消息指令。<code>end</code> 只结束文本输入，不会中断合成或播放。</p>
+                <br>
+                <p><strong>上传自定义说话人：</strong></p>
+                <p>POST <code>/api/speakers/upload</code>，multipart/form-data 字段：<code>name</code>、<code>ref_text</code>、<code>audio</code>（WAV 文件）。成功后需要重启服务才会加载。</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚠️ 注意事项</h2>
+            <p>合成出现漏字或发音不自然时，可以检查文本末尾是否有句号、问号等标点，补齐后再试。即使指定了拼音，句末标点也可能影响实际读音。</p>
+            <p>例如“原作者”读不清时，可选中整个词，用“指定读音”填入 yuán zuò zhě；这个短句还需要保留句末的“。”，避免“原”的声调不准。</p>
+            <div class="api-info notice-example"><code>本文内容由讯飞AI社区注册用户自发贡献，版权归&lt;phoneme py="yuán zuò zhě"&gt;原作者&lt;/phoneme&gt;所有。</code></div>
+        </div>
+    </div>
+
+    <script>
+        let currentController = null;
+        let ws = null;
+        let audioContext = null;
+        let audioWorkletNode = null;
+        let audioPlaybackMode = null;
+        let isStreaming = false;
+        let currentMode = 'normal';
+        let pronunciationSelection = null;
+
+        function openPronunciationDialog() {
+            const textarea = document.getElementById('text');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selected = textarea.value.slice(start, end);
+            if (!selected || !/^\p{Script=Han}+$/u.test(selected)) {
+                showStatus('请先在合成文本中选中需要指定读音的汉字', 'error');
+                textarea.focus();
+                return;
+            }
+            const tags = /<phoneme py="[^"]*">[^<>]*<\/phoneme>/g;
+            for (const tag of textarea.value.matchAll(tags)) {
+                if (start < tag.index + tag[0].length && end > tag.index) {
+                    showStatus('已标注的文字不能重复标注；请先删除原标记', 'error');
+                    return;
+                }
+            }
+            pronunciationSelection = { start, end, selected };
+            document.getElementById('phonemeSelected').textContent = selected;
+            const input = document.getElementById('phonemePinyin');
+            input.value = '';
+            document.getElementById('phonemeDialog').showModal();
+            input.focus();
+        }
+
+        function applyPronunciation() {
+            const selection = pronunciationSelection;
+            const textarea = document.getElementById('text');
+            const pinyin = document.getElementById('phonemePinyin').value.trim().replace(/\s+/g, ' ');
+            if (!selection || textarea.value.slice(selection.start, selection.end) !== selection.selected) {
+                showStatus('选中文字已改变，请重新选择', 'error');
+                document.getElementById('phonemeDialog').close();
+                return;
+            }
+            if (!pinyin || !/^[A-Za-z0-9\u00C0-\u024F\u0300-\u036F ']+$/u.test(pinyin)) {
+                showStatus('请输入拼音，可使用声调、数字和空格', 'error');
+                return;
+            }
+            const tag = `<phoneme py="${pinyin}">${selection.selected}</phoneme>`;
+            textarea.setRangeText(tag, selection.start, selection.end, 'end');
+            document.getElementById('phonemeDialog').close();
+            pronunciationSelection = null;
+            textarea.focus();
+            hideStatus();
+        }
+
+        async function loadSpeakers() {
+            try {
+                const response = await fetch('/api/speakers');
+                const data = await response.json();
+                const select = document.getElementById('speaker');
+                select.innerHTML = '';
+                data.speakers.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+                if (data.speakers.includes('39')) {
+                    select.value = '39';
+                } else if (data.speakers.includes('serena')) {
+                    select.value = 'serena';
+                }
+            } catch (e) {
+                console.error('Failed to load speakers:', e);
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('modeNormal').classList.toggle('active', mode === 'normal');
+            document.getElementById('modeStream').classList.toggle('active', mode === 'stream');
+            document.getElementById('generateBtn').classList.toggle('hidden', mode === 'stream');
+            document.getElementById('streamBtn').classList.toggle('hidden', mode === 'normal');
+            if (mode === 'normal') {
+                document.getElementById('firstAudioTime').classList.add('hidden');
+                document.getElementById('streamTimingBreakdown').classList.add('hidden');
+            }
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+
+        function setGenerating(isGenerating) {
+            const generateBtn = document.getElementById('generateBtn');
+            const streamBtn = document.getElementById('streamBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            generateBtn.disabled = isGenerating;
+            streamBtn.disabled = isGenerating;
+            stopBtn.disabled = !isGenerating;
+            if (isGenerating) {
+                generateBtn.innerHTML = '<span class="loading"></span> 生成中...';
+                streamBtn.innerHTML = '<span class="loading"></span> 连接中...';
+            } else {
+                generateBtn.innerHTML = '生成音频';
+                streamBtn.innerHTML = '🎧 流式播放';
+            }
+        }
+
+        function readPostprocessSettings() {
+            const rawVolume = document.getElementById('volume').value.trim();
+            const rawSpeed = document.getElementById('speed').value.trim();
+            const volume = Number(rawVolume);
+            const speed = Number(rawSpeed);
+            if (!rawVolume || !rawSpeed || ![volume, speed].every(value => Number.isInteger(value) && value >= 0 && value <= 100)) {
+                showStatus('音量和语速必须是 0–100 的整数', 'error');
+                return null;
+            }
+            return { volume, speed };
+        }
+
+        async function setupStreamingAudioPlayer() {
+            if (audioContext.audioWorklet && typeof window.AudioWorkletNode === 'function') {
+                try {
+                    await audioContext.audioWorklet.addModule('/audio-processor.js?v=7');
+                    audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+                    audioWorkletNode.connect(audioContext.destination);
+                    audioPlaybackMode = 'worklet';
+                    return;
+                } catch (error) {
+                    // AudioWorklet can be unavailable on HTTP LAN origins, or its module can be blocked.
+                    // Keep streaming usable through the browser's real-time PCM callback API.
+                    console.warn('AudioWorklet unavailable; using ScriptProcessor fallback:', error);
+                }
+            }
+
+            const node = audioContext.createScriptProcessor(512, 0, 1);
+            const chunks = [];
+            let chunkIndex = 0;
+            let chunkOffset = 0;
+            let totalReceived = 0;
+            let totalPlayed = 0;
+            let draining = false;
+            let firstAudioReported = false;
+            const port = {
+                onmessage: null,
+                postMessage(data) {
+                    if (data instanceof Float32Array) {
+                        if (data.length) {
+                            chunks.push(data);
+                            totalReceived += data.length;
+                        }
+                    } else if (data === 'drain') {
+                        draining = true;
+                    } else if (data === 'reset') {
+                        chunks.length = 0;
+                        chunkIndex = 0;
+                        chunkOffset = 0;
+                        totalReceived = 0;
+                        totalPlayed = 0;
+                        draining = false;
+                        firstAudioReported = false;
+                    }
+                }
+            };
+            node.onaudioprocess = (event) => {
+                const output = event.outputBuffer.getChannelData(0);
+                let i = 0;
+                while (i < output.length && chunkIndex < chunks.length) {
+                    const chunk = chunks[chunkIndex];
+                    const count = Math.min(output.length - i, chunk.length - chunkOffset);
+                    output.set(chunk.subarray(chunkOffset, chunkOffset + count), i);
+                    for (let j = i; j < i + count; j++) {
+                        if (!firstAudioReported && Math.abs(output[j]) > 0.0001) {
+                            firstAudioReported = true;
+                            port.onmessage?.({ data: { type: 'first_audio_played' } });
+                            break;
+                        }
+                    }
+                    i += count;
+                    chunkOffset += count;
+                    totalPlayed += count;
+                    if (chunkOffset === chunk.length) {
+                        chunkIndex++;
+                        chunkOffset = 0;
+                    }
+                }
+                output.fill(0, i);
+
+                if (chunkIndex > 64 && chunkIndex * 2 > chunks.length) {
+                    chunks.splice(0, chunkIndex);
+                    chunkIndex = 0;
+                }
+                if (draining && chunkIndex === chunks.length) {
+                    draining = false;
+                    port.onmessage?.({ data: { type: 'buffer_drained', played: totalPlayed, received: totalReceived } });
+                }
+            };
+            node.connect(audioContext.destination);
+            audioWorkletNode = { port, disconnect: () => node.disconnect() };
+            audioPlaybackMode = 'script-processor';
+        }
+
+        async function generateTTS() {
+            const text = document.getElementById('text').value.trim();
+            if (!text) {
+                showStatus('请输入文本', 'error');
+                return;
+            }
+            const postprocess = readPostprocessSettings();
+            if (!postprocess) return;
+
+            const speaker = document.getElementById('speaker').value;
+            const temperature = parseFloat(document.getElementById('temperature').value) || 0;
+            const topKInput = document.getElementById('top_k').value.trim();
+            const topPInput = document.getElementById('top_p').value.trim();
+            const top_k = topKInput === '' ? 50 : parseInt(topKInput, 10);
+            const top_p = topPInput === '' ? 1.0 : parseFloat(topPInput);
+            const seed = document.getElementById('seed').value ? parseInt(document.getElementById('seed').value) : null;
+            const maxSteps = parseInt(document.getElementById('maxSteps').value) || 512;
+            const instruction = document.getElementById('instruction').value.trim() || null;
+
+            setGenerating(true);
+            showStatus('正在生成音频...', 'info');
+            document.getElementById('audioContainer').classList.add('hidden');
+
+            currentController = new AbortController();
+
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text,
+                        speaker,
+                        temperature,
+                        top_k,
+                        top_p,
+                        seed,
+                        max_steps: maxSteps,
+                        instruction,
+                        ...postprocess,
+                    }),
+                    signal: currentController.signal,
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.audio_base64) {
+                    const audioData = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                    const blob = new Blob([audioData], { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = url;
+                    document.getElementById('audioContainer').classList.remove('hidden');
+                    showStatus(`生成成功！时长: ${(data.duration_ms / 1000).toFixed(2)}秒`, 'success');
+                } else {
+                    showStatus(data.message || '生成失败', 'error');
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    showStatus('已停止生成', 'info');
+                } else {
+                    showStatus(`错误: ${e.message}`, 'error');
+                }
+            } finally {
+                setGenerating(false);
+                currentController = null;
+            }
+        }
+
+        async function startStreaming() {
+            let streamCompleted = false;
+            const text = document.getElementById('text').value.trim();
+            if (!text) {
+                showStatus('请输入文本', 'error');
+                return;
+            }
+            const postprocess = readPostprocessSettings();
+            if (!postprocess) return;
+
+            const speaker = document.getElementById('speaker').value;
+            const temperature = parseFloat(document.getElementById('temperature').value) || 0;
+            const topKInput = document.getElementById('top_k').value.trim();
+            const topPInput = document.getElementById('top_p').value.trim();
+            const top_k = topKInput === '' ? 50 : parseInt(topKInput, 10);
+            const top_p = topPInput === '' ? 1.0 : parseFloat(topPInput);
+            const seed = document.getElementById('seed').value ? parseInt(document.getElementById('seed').value) : null;
+            const instruction = document.getElementById('instruction').value.trim() || null;
+            const maxSteps = parseInt(document.getElementById('maxSteps').value) || 512;
+            const streamStartedAt = performance.now();
+            const firstAudioTime = document.getElementById('firstAudioTime');
+            firstAudioTime.textContent = '首音时间：等待音频...';
+            firstAudioTime.classList.remove('hidden');
+            const timingElement = document.getElementById('streamTimingBreakdown');
+            const timings = { prepared: null, sent: null, packet: null, sound: null };
+            const elapsed = (end, start) => end === null || start === null ? '等待' : `${Math.round(end - start)} ms`;
+            const updateTiming = () => {
+                timingElement.textContent = `播放器准备：${elapsed(timings.prepared, streamStartedAt)}；连接：${elapsed(timings.sent, timings.prepared)}；请求首包：${elapsed(timings.packet, timings.sent)}；首包到首音：${elapsed(timings.sound, timings.packet)}`;
+            };
+            timingElement.title = '首音从点击播放开始计时，到播放器报告首次输出非静音。请求首包从发送合成请求开始计时，到浏览器收到首个非空 PCM 包；含服务排队、推理及传输。首包到首音含原音频开头的低电平采样、播放器调度与主线程消息通知；不等于扬声器物理发声时间。';
+            timingElement.classList.remove('hidden');
+            updateTiming();
+
+            setGenerating(true);
+            document.getElementById('streamingStatus').classList.remove('hidden');
+            document.getElementById('audioContainer').classList.add('hidden');
+            hideStatus();
+
+            try {
+                // 创建 AudioContext（需要用户交互后才能播放）
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 24000
+                });
+                
+                // 确保 AudioContext 是运行状态
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                await setupStreamingAudioPlayer();
+                timings.prepared = performance.now();
+                updateTiming();
+
+                // 监听 AudioWorklet 消息
+                audioWorkletNode.port.onmessage = (event) => {
+                    if (event.data.type === 'first_audio_played') {
+                        timings.sound = performance.now();
+                        firstAudioTime.textContent = `首音时间：${Math.round(timings.sound - streamStartedAt)} ms（点击播放到播放器首次输出非静音）`;
+                        updateTiming();
+                    } else if (event.data.type === 'buffer_drained') {
+                        console.log(`Buffer drained: played ${event.data.played}, received ${event.data.received}`);
+                        if (isStreaming) {
+                            stopStreaming();
+                            showStatus('流式播放完成', 'success');
+                        }
+                    }
+                };
+
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${protocol}//${window.location.host}/api/tts/stream`);
+
+                ws.binaryType = 'arraybuffer';
+
+                // 一次性发送所有文本
+                document.getElementById('sentText').textContent = text;
+                document.getElementById('pendingText').textContent = '';
+
+                ws.onopen = () => {
+                    timings.sent = performance.now();
+                    updateTiming();
+                    // 一次性发送所有文本
+                    ws.send(JSON.stringify({
+                        text: text,
+                        speaker,
+                        temperature,
+                        top_k,
+                        top_p,
+                        seed,
+                        instruction,
+                        max_steps: maxSteps,
+                        ...postprocess,
+                    }));
+                    // 发送结束信号
+                    ws.send('end');
+                };
+
+                ws.onmessage = (event) => {
+                    if (event.data instanceof ArrayBuffer) {
+                        if (timings.packet === null && event.data.byteLength > 0) {
+                            timings.packet = performance.now();
+                            updateTiming();
+                        }
+                        // 音频数据
+                        const float32Data = new Float32Array(event.data);
+                        console.log('Received audio data:', float32Data.length, 'samples');
+                        audioWorkletNode.port.postMessage(float32Data);
+                    } else if (event.data === 'segment_done') {
+                        // 段完成信号
+                        console.log('Segment done');
+                    } else if (event.data === 'done') {
+                        // 服务端确认结束，通知 AudioWorklet 开始排空
+                        console.log('All done, notifying AudioWorklet to drain...');
+                        streamCompleted = true;
+                        ws.close();
+                        ws = null;
+                        // 通知 AudioWorklet 开始排空缓冲区
+                        if (audioWorkletNode) {
+                            audioWorkletNode.port.postMessage('drain');
+                        }
+                    } else {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.error) {
+                                showStatus(`错误: ${data.error}`, 'error');
+                                stopStreaming();
+                            }
+                        } catch (e) {}
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    if (streamCompleted || !isStreaming) return;
+                    showStatus('WebSocket 连接错误', 'error');
+                    stopStreaming();
+                };
+
+                ws.onclose = () => {
+                    // WebSocket 关闭时不立即停止播放
+                    // 让 AudioWorklet 继续播放缓冲区中的音频
+                    console.log('WebSocket closed, letting buffer drain...');
+                };
+
+                isStreaming = true;
+
+            } catch (e) {
+                showStatus(`错误: ${e.message}`, 'error');
+                stopStreaming();
+            }
+        }
+
+        function stopStreaming() {
+            isStreaming = false;
+            const firstAudioTime = document.getElementById('firstAudioTime');
+            if (firstAudioTime.textContent === '首音时间：等待音频...') {
+                firstAudioTime.textContent = '首音时间：未产生音频';
+            }
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            if (audioWorkletNode) {
+                audioWorkletNode.port.postMessage('reset');
+                audioWorkletNode.disconnect();
+                audioWorkletNode = null;
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            document.getElementById('streamingStatus').classList.add('hidden');
+            document.getElementById('sentText').textContent = '';
+            document.getElementById('pendingText').textContent = '';
+            setGenerating(false);
+        }
+
+        function stopGeneration() {
+            if (currentController) {
+                currentController.abort();
+            }
+            if (isStreaming) {
+                stopStreaming();
+            }
+        }
+
+        // Initialize
+        loadSpeakers();
+
+        document.getElementById('uploadSpeakerButton').addEventListener('click', async () => {
+            const button = document.getElementById('uploadSpeakerButton');
+            const status = document.getElementById('uploadSpeakerStatus');
+            const name = document.getElementById('uploadSpeakerName').value.trim();
+            const text = document.getElementById('uploadSpeakerText').value.trim();
+            const audio = document.getElementById('uploadSpeakerAudio').files[0];
+            if (!/^[A-Za-z0-9_-]{1,64}$/.test(name) || !text || !audio) {
+                status.textContent = '请填写有效名称、选择 WAV 文件，并填写对应文本。';
+                return;
+            }
+            if (!audio.name.toLowerCase().endsWith('.wav') || audio.size > 50 * 1024 * 1024) {
+                status.textContent = '请上传不超过 50 MB 的 WAV 文件。';
+                return;
+            }
+            const form = new FormData();
+            form.append('name', name);
+            form.append('ref_text', text);
+            form.append('audio', audio);
+            button.disabled = true;
+            status.textContent = '正在上传并提取说话人特征，请稍候…';
+            try {
+                const response = await fetch('/api/speakers/upload', { method: 'POST', body: form });
+                let result;
+                try { result = await response.json(); }
+                catch (_) { throw new Error('上传失败（HTTP ' + response.status + '），请检查文件大小或服务日志。'); }
+                if (!response.ok || !result.success) throw new Error(result.message || '生成失败');
+                status.textContent = result.message;
+            } catch (error) {
+                status.textContent = '错误：' + error.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

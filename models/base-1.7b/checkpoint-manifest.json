@@ -1,0 +1,45 @@
+{
+  "source_model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+  "source_sha256": "38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c",
+  "quantization": "Q5_K_M",
+  "validated_speakers": [
+    "39"
+  ],
+  "files": [
+    {
+      "path": "gguf\\qwen3_assets.gguf",
+      "sha256": "1C40C807A8E83DE379474DBB80035138B48D62E31BCF524E4F67393691FFF262",
+      "bytes": 1529877568
+    },
+    {
+      "path": "gguf_q5_k_m\\qwen3_tts_predictor.gguf",
+      "sha256": "8728A391DB5A39F4A0FD1740F1AB7CC4D1A2C7D4C9A82AEDC356A3CACE6BB203",
+      "bytes": 103332352
+    },
+    {
+      "path": "gguf_q5_k_m\\qwen3_tts_talker.gguf",
+      "sha256": "950E668FF12B73E0E05877059FCC7064529291EEF951CC762849642B6D00C3FD",
+      "bytes": 1006245280
+    },
+    {
+      "path": "onnx\\qwen3_tts_codec_encoder.onnx",
+      "sha256": "4293763B4EAADC9D071DC6F0BECD4AF0772541DF2DB233CCA8E88B6CA12B131E",
+      "bytes": 225976179
+    },
+    {
+      "path": "onnx\\qwen3_tts_decoder.onnx",
+      "sha256": "B7BE17223065FE598BEDC88F147AAF8C6CE3B63A1126CD9648D9A1612FAE5DA1",
+      "bytes": 456760558
+    },
+    {
+      "path": "onnx\\qwen3_tts_speaker_encoder.onnx",
+      "sha256": "540063ED1A2C2D46DD4FE3B3BD9615A8153EF6F2F09879BD7293BD7B1D17FFE7",
+      "bytes": 48420723
+    },
+    {
+      "path": "tokenizer\\tokenizer.json",
+      "sha256": "09267689B8362020B9763B65DD5BE7E086B31E28D72E02837A9E781DE9A91BC7",
+      "bytes": 11423986
+    }
+  ]
+}
